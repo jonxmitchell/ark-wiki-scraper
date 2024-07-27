@@ -1,94 +1,183 @@
+import json
+import time
 import requests
 from bs4 import BeautifulSoup
-import json
-import re
+from selenium import webdriver
+from selenium.webdriver.chrome.service import Service
+from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.common.by import By
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
+from webdriver_manager.chrome import ChromeDriverManager
 
-BASE_URL = "https://ark.wiki.gg"
-CREATURES_URL = f"{BASE_URL}/wiki/Creature_IDs"
+# Configurations
+CREATURES_URL = 'https://ark.wiki.gg/wiki/Creature_IDs'
+ITEMS_URL = 'https://ark.wiki.gg/wiki/Item_IDs'
+BLACKLIST_CONFIG = 'config.json'
 
-def load_config(file_path='config.json'):
-    with open(file_path, 'r') as f:
+def load_blacklist():
+    with open(BLACKLIST_CONFIG, 'r') as f:
         config = json.load(f)
-    return config.get('blacklist', [])
+    return config.get('dino_blacklist', []), config.get('item_blacklist', [])
 
-def is_blacklisted(name, blacklist):
-    # Convert name to lower case for case-insensitive comparison
-    name_lower = name.lower()
-    # Check if any blacklisted term is present in the name
-    for term in blacklist:
-        if term.lower() in name_lower:
-            print(f"Blacklist match found: {name} contains {term}")
-            return True
-    return False
+def init_webdriver(headless=False):
+    chrome_options = Options()
+    if headless:
+        chrome_options.add_argument("--headless")  # Run in headless mode (optional)
+    chrome_options.add_argument("--no-sandbox")
+    chrome_options.add_argument("--disable-dev-shm-usage")
 
-def get_creatures_list(url, blacklist):
-    response = requests.get(url)
-    soup = BeautifulSoup(response.content, 'html.parser')
+    service = Service(ChromeDriverManager().install())
+    driver = webdriver.Chrome(service=service, options=chrome_options)
     
-    # Find all tables on the page
-    tables = soup.find_all('table', {'class': 'wikitable'})
-    
-    creatures = []
+    return driver
+
+def click_element(driver, element):
+    try:
+        driver.execute_script("arguments[0].click();", element)
+    except Exception as e:
+        print(f"Error clicking element: {e}")
+
+def get_creatures_list(url):
+    print("Collecting creature data...")
+    driver = init_webdriver(headless=True)  # Use headless mode by default
+    driver.get(url)
+    wait = WebDriverWait(driver, 10)
+
+    # Click "show" to reveal all tables
+    show_buttons = driver.find_elements(By.CSS_SELECTOR, "span.jslink")
+    for button in show_buttons:
+        try:
+            click_element(driver, button)
+            time.sleep(1)  # Wait for the content to load
+        except Exception as e:
+            print(f"Error clicking 'show' button: {e}")
+
+    # Now parse the content
+    soup = BeautifulSoup(driver.page_source, 'html.parser')
+    driver.quit()
+
+    creatures = {}
+    tables = soup.find_all('table', class_='wikitable')
+
+    creature_id = 1  # Initialize ID counter
+
     for table in tables:
-        for row in table.find_all('tr')[1:]:  # Skip header row
-            cells = row.find_all('td')
-            if len(cells) >= 5:  # Ensure there are at least five cells
-                name_cell = cells[0]
-                entity_id_cell = cells[3]  # Entity ID is in the fourth cell
-                blueprint_cell = cells[4]  # Blueprint Path is in the fifth cell
-                
-                # Extract name
-                link = name_cell.find('a', title=True)
-                creature_name = link['title'].strip() if link else "Unknown"
-                
-                # Extract Entity ID
-                entity_id = entity_id_cell.get_text(strip=True)
-                
-                # Extract blueprint path
-                blueprint_span = blueprint_cell.find('span', style="font-size:x-small;")
-                if blueprint_span:
-                    blueprint_text = blueprint_span.get_text(strip=True)
-                    # Clean the blueprint path
-                    blueprint_path = re.search(r'Blueprint\'[^\'"]*\'', blueprint_text)
-                    blueprint_path = blueprint_path.group(0) if blueprint_path else blueprint_text.strip()
-                else:
-                    blueprint_path = "Unknown"
-                
-                # Check if the creature is blacklisted
-                if not is_blacklisted(creature_name, blacklist):
-                    creatures.append({
-                        "ID": len(creatures) + 1,  # ID is a number starting from 1
-                        "Type": "creature",
-                        "Name": creature_name,
-                        "EntityID": entity_id,
-                        "Blueprint": blueprint_path
-                    })
-                else:
-                    print(f"Skipping blacklisted creature: {creature_name}")
-    
+        rows = table.find_all('tr')[1:]  # Skip header row
+        for row in rows:
+            cols = row.find_all('td')
+            if len(cols) < 5:
+                continue
+
+            try:
+                name_cell = cols[0].get_text(strip=True)
+                entity_id = cols[3].get_text(strip=True)
+                blueprint_cell = cols[4].get_text(strip=True)
+
+                # Clean up blueprint
+                blueprint = blueprint_cell.split('\"')[1] if "\"" in blueprint_cell else "Unknown"
+
+                # Extracting the name
+                name = name_cell.split(' (')[0]
+
+                # Assign incremental ID if not present
+                creatures[name] = {
+                    "ID": creature_id,
+                    "Type": "creature",
+                    "Name": name,
+                    "EntityID": entity_id,
+                    "Blueprint": blueprint
+                }
+
+                print(f"Collected creature: {name} (ID: {creature_id})")
+                creature_id += 1  # Increment ID for next entry
+
+            except Exception as e:
+                print(f"Error processing row: {e}")
+
     return creatures
 
-def main():
-    blacklist = load_config()
-    
-    print(f"Blacklist loaded: {blacklist}")
+def get_items_list(url):
+    print("Collecting item data...")
+    driver = init_webdriver(headless=True)  # Use headless mode by default
+    driver.get(url)
+    wait = WebDriverWait(driver, 10)
 
-    creatures = get_creatures_list(CREATURES_URL, blacklist)
-    if not creatures:
-        print("No creatures found.")
-        return
+    # Click "show" to reveal all tables
+    show_buttons = driver.find_elements(By.CSS_SELECTOR, "span.jslink")
+    for button in show_buttons:
+        try:
+            click_element(driver, button)
+            time.sleep(1)  # Wait for the content to load
+        except Exception as e:
+            print(f"Error clicking 'show' button: {e}")
+
+    # Now parse the content
+    soup = BeautifulSoup(driver.page_source, 'html.parser')
+    driver.quit()
+
+    items = {}
+    tables = soup.find_all('table', class_='wikitable')
+
+    item_id = 1  # Initialize ID counter
+
+    for table in tables:
+        rows = table.find_all('tr')[1:]  # Skip header row
+        for row in rows:
+            cols = row.find_all('td')
+            if len(cols) < 5:
+                continue
+
+            try:
+                name_cell = cols[0].get_text(strip=True)
+                class_name = cols[4].get_text(strip=True)
+                blueprint_cell = cols[5].get_text(strip=True)
+
+                # Clean up blueprint
+                blueprint = blueprint_cell.split('\"')[1] if "\"" in blueprint_cell else "Unknown"
+
+                # Extracting the name
+                name = name_cell
+
+                # Assign incremental ID if not present
+                items[name] = {
+                    "ID": item_id,
+                    "Type": cols[1].get_text(strip=True),
+                    "Name": name,
+                    "ClassName": class_name,
+                    "Blueprint": blueprint
+                }
+
+                print(f"Collected item: {name} (ID: {item_id})")
+                item_id += 1  # Increment ID for next entry
+
+            except Exception as e:
+                print(f"Error processing row: {e}")
+
+    return items
+
+def main():
+    creatures = get_creatures_list(CREATURES_URL)
+    items = get_items_list(ITEMS_URL)
     
-    print(f"Found {len(creatures)} creatures.")
+    # Load the blacklist
+    dino_blacklist, item_blacklist = load_blacklist()
     
-    creature_data = {}
-    for creature in creatures:
-        name_key = creature['Name'].replace(' ', '_')
-        creature_data[name_key] = creature
+    # Filter out blacklisted items
+    filtered_creatures = {name: data for name, data in creatures.items() if not any(term in name for term in dino_blacklist)}
+    filtered_items = {name: data for name, data in items.items() if not any(term in name for term in item_blacklist)}
     
-    with open('creature_data.json', 'w') as f:
-        json.dump(creature_data, f, indent=4)
-    
-    print("Data collection completed and saved to creature_data.json")
+    # Combine data
+    all_data = {
+        "Dinos": filtered_creatures,
+        "Items": filtered_items
+    }
+
+    # Write data to JSON file
+    with open('ark_data.json', 'w') as f:
+        json.dump(all_data, f, indent=4)
+
+    print("Data collection complete. Check 'ark_data.json' for results.")
 
 if __name__ == "__main__":
     main()
