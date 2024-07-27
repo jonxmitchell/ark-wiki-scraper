@@ -20,7 +20,7 @@ A Python script to scrape data from the Ark Wiki, focusing on creature and item 
 1. Clone the Repository:
 
 ```bash
-git clone https://github.com/yourusername/ark-wiki-scrapper.git
+git clone https://github.com/jonxmitchell/ark-wiki-scrapper.git
 cd ark-wiki-scrapper
 ```
 
