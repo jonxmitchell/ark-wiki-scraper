@@ -90,5 +90,6 @@ python ark_scraper.py
 
 Feel free to submit issues or pull requests. Contributions are welcome!
 
-Acknowledgments 🙌
+## Acknowledgments 🙌
+
 [Ark Wiki](https://ark.wiki.gg) for the data.
