@@ -1,5 +1,5 @@
 {
-	"blacklist": [
+	"dino_blacklist": [
 		"Gauntlet",
 		"Alpha",
 		"VR",
@@ -27,5 +27,6 @@
 		"Reaper Prince",
 		"Reaper Queen",
 		"Caverns"
-	]
+	],
+	"item_blacklist": [""]
 }
