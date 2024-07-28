@@ -92,7 +92,7 @@ python main.py
 		"Beacon_Name": {
 			"ID": 1,
 			"Type": "beacon",
-			"Name": "[BeaconName",
+			"Name": "BeaconName",
 			"ClassName": "ClassName"
 		}
 	}
