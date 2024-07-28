@@ -32,14 +32,15 @@ pip install -r requirements.txt
 
 ## Configuration ⚙️
 
-1. Edit config.json:
+1. Edit blacklist.json:
    This file contains blacklists for creatures and items. Modify as needed to exclude specific entries.
 
 ```json
 {
-	"dino_blacklist": ["Gauntlet", "ExampleCreature"],
-	"item_blacklist": ["ExampleItem"],
-	"engram_blacklist": ["ExampleEngram"]
+	"Creatures": ["ExampleCreature"],
+	"Items": ["ExampleItem"],
+	"Engrams": ["ExampleEngram"],
+	"Beacons": ["ExampleBeacon"]
 }
 ```
 
@@ -80,13 +81,21 @@ python main.py
 		}
 	},
 	"Engrams": {
-        	"Engram_Name": {
-            		"ID": 1,
-            		"Type": "engram",
-            		"Name": "EngramName",
-            		"Blueprint": "BlueprintPath"
-       		}
+		"Engram_Name": {
+			"ID": 1,
+			"Type": "engram",
+			"Name": "EngramName",
+			"Blueprint": "BlueprintPath"
+		}
 	},
+	"Beacons": {
+		"Beacon_Name": {
+			"ID": 1,
+			"Type": "beacon",
+			"Name": "[BeaconName",
+			"ClassName": "ClassName"
+		}
+	}
 }
 ```
 
