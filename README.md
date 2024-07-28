@@ -38,7 +38,8 @@ pip install requests beautifulsoup4 selenium webdriver-manager aiohttp
 ```json
 {
 	"dino_blacklist": ["Gauntlet", "ExampleCreature"],
-	"item_blacklist": ["ExampleItem"]
+	"item_blacklist": ["ExampleItem"],
+	"engram_blacklist": ["ExampleEngram"]
 }
 ```
 
