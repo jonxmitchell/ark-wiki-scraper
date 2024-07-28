@@ -27,7 +27,7 @@ cd ark-wiki-scrapper
 2. Install Required Packages:
 
 ```bash
-pip install requests beautifulsoup4 selenium webdriver-manager aiohttp
+pip install -r requirements.txt
 ```
 
 ## Configuration ⚙️
