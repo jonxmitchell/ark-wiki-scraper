@@ -23,10 +23,12 @@
 		"Rare",
 		"Salmon",
 		"Rubble",
+		"Exo-Mek",
 		"Rockwell",
 		"Reaper Prince",
 		"Reaper Queen",
 		"Caverns"
 	],
-	"item_blacklist": [""]
+	"item_blacklist": [],
+	"engram_blacklist": []
 }
