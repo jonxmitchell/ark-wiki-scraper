@@ -27,7 +27,7 @@ cd ark-wiki-scrapper
 2. Install Required Packages:
 
 ```bash
-pip install requests beautifulsoup4 selenium webdriver-manager
+pip install -r requirements.txt
 ```
 
 ## Configuration ⚙️
@@ -38,7 +38,8 @@ pip install requests beautifulsoup4 selenium webdriver-manager
 ```json
 {
 	"dino_blacklist": ["Gauntlet", "ExampleCreature"],
-	"item_blacklist": ["ExampleItem"]
+	"item_blacklist": ["ExampleItem"],
+	"engram_blacklist": ["ExampleEngram"]
 }
 ```
 
@@ -51,7 +52,7 @@ Ensure the URLs for creature and item data are correctly set in the script.
 1. Run the Script:
 
 ```bash
-python ark_scraper.py
+python main.py
 ```
 
 2. Output:
@@ -61,7 +62,7 @@ python ark_scraper.py
 ```json
 {
 	"Dinos": {
-		"CreatureName": {
+		"Creature_Name": {
 			"ID": 1,
 			"Type": "creature",
 			"Name": "CreatureName",
@@ -70,14 +71,22 @@ python ark_scraper.py
 		}
 	},
 	"Items": {
-		"ItemName": {
+		"Item_Name": {
 			"ID": 1,
 			"Type": "ItemType",
 			"Name": "ItemName",
 			"ClassName": "ClassName",
 			"Blueprint": "BlueprintPath"
 		}
-	}
+	},
+	"Engrams": {
+        	"Engram_Name": {
+            		"ID": 1,
+            		"Type": "engram",
+            		"Name": "EngramName",
+            		"Blueprint": "BlueprintPath"
+       		}
+	},
 }
 ```
 
