@@ -1,7 +1,4 @@
-import json
 import time
-import aiohttp
-import asyncio
 from bs4 import BeautifulSoup
 from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
@@ -10,18 +7,13 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from webdriver_manager.chrome import ChromeDriverManager
+from engram_fetcher import fetch_engram_details, BASE_URL
+import aiohttp
+import asyncio
 
-# Configurations
 CREATURES_URL = 'https://ark.wiki.gg/wiki/Creature_IDs'
 ITEMS_URL = 'https://ark.wiki.gg/wiki/Item_IDs'
 ENGRAMS_URL = 'https://ark.wiki.gg/wiki/Engrams'
-BLACKLIST_CONFIG = 'config.json'
-BASE_URL = 'https://ark.wiki.gg'
-
-def load_blacklist():
-    with open(BLACKLIST_CONFIG, 'r') as f:
-        config = json.load(f)
-    return config.get('dino_blacklist', []), config.get('item_blacklist', []), config.get('engram_blacklist', [])
 
 def init_webdriver(headless=False):
     chrome_options = Options()
@@ -44,10 +36,10 @@ def click_element(driver, element):
 def format_title(title):
     return title.replace(' ', '_')
 
-def get_creatures_list(url):
+def get_creatures_list():
     print("Collecting creature data...")
     driver = init_webdriver(headless=True)
-    driver.get(url)
+    driver.get(CREATURES_URL)
     wait = WebDriverWait(driver, 10)
 
     show_buttons = driver.find_elements(By.CSS_SELECTOR, "span.jslink")
@@ -99,10 +91,10 @@ def get_creatures_list(url):
 
     return creatures
 
-def get_items_list(url):
+def get_items_list():
     print("Collecting item data...")
     driver = init_webdriver(headless=True)
-    driver.get(url)
+    driver.get(ITEMS_URL)
     wait = WebDriverWait(driver, 10)
 
     show_buttons = driver.find_elements(By.CSS_SELECTOR, "span.jslink")
@@ -155,34 +147,10 @@ def get_items_list(url):
     print(f"Total items collected: {len(items)}")
     return items
 
-async def fetch_engram_details(session, url):
-    try:
-        async with session.get(url) as response:
-            page_content = await response.text()
-            soup = BeautifulSoup(page_content, 'html.parser')
-            blueprint = "Unknown"
-            name = "Unknown"
-
-            name_tag = soup.select_one(".info-arkitex.info-X1-100.info-masthead")
-            if name_tag:
-                name = name_tag.get_text(strip=True)
-                key_name = format_title(name)
-
-            blueprint_tags = soup.select(".info-arkitex-spawn-commands-entry .copy-clipboard .copy-content")
-            for tag in blueprint_tags:
-                if 'Blueprint' in tag.get_text(strip=True):
-                    blueprint = tag.get_text(strip=True).split('"')[1]
-                    break
-
-            return key_name, name, blueprint
-    except Exception as e:
-        print(f"Error fetching engram details from {url}: {e}")
-        return "Unknown", "Unknown", "Unknown"
-
-async def get_engrams_list(url):
+async def get_engrams_list():
     print("Collecting engram data...")
     driver = init_webdriver(headless=True)
-    driver.get(url)
+    driver.get(ENGRAMS_URL)
     wait = WebDriverWait(driver, 10)
 
     soup = BeautifulSoup(driver.page_source, 'html.parser')
@@ -230,32 +198,3 @@ async def get_engrams_list(url):
 
     print(f"Total engrams collected: {len(engrams)}")
     return engrams
-
-def main():
-    creatures = get_creatures_list(CREATURES_URL)
-    items = get_items_list(ITEMS_URL)
-    engrams = asyncio.run(get_engrams_list(ENGRAMS_URL))
-    
-    dino_blacklist, item_blacklist, engram_blacklist = load_blacklist()
-    
-    filtered_creatures = {name: data for name, data in creatures.items() if not any(term in name for term in dino_blacklist)}
-    filtered_items = {name: data for name, data in items.items() if not any(term in name for term in item_blacklist)}
-    filtered_engrams = {name: data for name, data in engrams.items() if not any(term in name for term in engram_blacklist)}
-    
-    all_data = {
-        "Dinos": filtered_creatures,
-        "Items": filtered_items,
-        "Engrams": filtered_engrams
-    }
-
-    print(f"Filtered Creatures: {len(filtered_creatures)}")
-    print(f"Filtered Items: {len(filtered_items)}")
-    print(f"Filtered Engrams: {len(filtered_engrams)}")
-
-    with open('ark_data.json', 'w') as f:
-        json.dump(all_data, f, indent=4)
-
-    print("Data collection complete. Check 'ark_data.json' for results.")
-
-if __name__ == "__main__":
-    main()
