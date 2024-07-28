@@ -1,4 +1,6 @@
 import time
+import aiohttp
+import asyncio
 from bs4 import BeautifulSoup
 from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
@@ -7,13 +9,8 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from webdriver_manager.chrome import ChromeDriverManager
-from engram_fetcher import fetch_engram_details, BASE_URL
-import aiohttp
-import asyncio
 
-CREATURES_URL = 'https://ark.wiki.gg/wiki/Creature_IDs'
-ITEMS_URL = 'https://ark.wiki.gg/wiki/Item_IDs'
-ENGRAMS_URL = 'https://ark.wiki.gg/wiki/Engrams'
+BASE_URL = 'https://ark.wiki.gg'
 
 def init_webdriver(headless=False):
     chrome_options = Options()
@@ -39,7 +36,7 @@ def format_title(title):
 def get_creatures_list():
     print("Collecting creature data...")
     driver = init_webdriver(headless=True)
-    driver.get(CREATURES_URL)
+    driver.get(BASE_URL + '/wiki/Creature_IDs')
     wait = WebDriverWait(driver, 10)
 
     show_buttons = driver.find_elements(By.CSS_SELECTOR, "span.jslink")
@@ -94,16 +91,25 @@ def get_creatures_list():
 def get_items_list():
     print("Collecting item data...")
     driver = init_webdriver(headless=True)
-    driver.get(ITEMS_URL)
+    driver.get(BASE_URL + '/wiki/Item_IDs')
     wait = WebDriverWait(driver, 10)
 
     show_buttons = driver.find_elements(By.CSS_SELECTOR, "span.jslink")
+    
     for button in show_buttons:
-        try:
-            click_element(driver, button)
-            time.sleep(1)
-        except Exception as e:
-            print(f"Error clicking 'show' button: {e}")
+        retries = 3
+        for _ in range(retries):
+            try:
+                click_element(driver, button)
+                time.sleep(1)
+                if "hidden" not in button.get_attribute("class"):
+                    break
+            except Exception as e:
+                print(f"Error clicking 'show' button: {e}")
+                time.sleep(1)
+
+    # Wait for all dynamic content to be fully loaded
+    time.sleep(5)
 
     soup = BeautifulSoup(driver.page_source, 'html.parser')
     driver.quit()
@@ -132,9 +138,9 @@ def get_items_list():
 
                 items[key_name] = {
                     "ID": item_id,
-                    "Type": cols[1].get_text(strip=True),
+                    "Type": cols[1].get_text(strip=True) or "Unknown",
                     "Name": name,
-                    "ClassName": class_name,
+                    "ClassName": class_name or "Unknown",
                     "Blueprint": blueprint
                 }
 
@@ -150,7 +156,7 @@ def get_items_list():
 async def get_engrams_list():
     print("Collecting engram data...")
     driver = init_webdriver(headless=True)
-    driver.get(ENGRAMS_URL)
+    driver.get(BASE_URL + '/wiki/Engrams')
     wait = WebDriverWait(driver, 10)
 
     soup = BeautifulSoup(driver.page_source, 'html.parser')
@@ -198,3 +204,31 @@ async def get_engrams_list():
 
     print(f"Total engrams collected: {len(engrams)}")
     return engrams
+
+async def fetch_engram_details(session, engram_page_url):
+    try:
+        async with session.get(engram_page_url) as response:
+            page_content = await response.text()
+            soup = BeautifulSoup(page_content, 'html.parser')
+
+            name_element = soup.find('div', class_='info-arkitex info-X1-100 info-masthead')
+            name = name_element.get_text(strip=True) if name_element else "Unknown"
+            key_name = name.replace(' ', '_')
+
+            blueprint = "Unknown"
+            blueprint_elements = soup.find_all('div', class_='info-arkitex-spawn-commands-entry')
+
+            for element in blueprint_elements:
+                code_elements = element.find_all('code', class_='copy-clipboard')
+                for code in code_elements:
+                    if 'giveitem' in code.get_text(strip=True):
+                        blueprint = code.get_text(strip=True).split('"')[1]
+                        break
+                if blueprint != "Unknown":
+                    break
+
+            return key_name, name, blueprint
+
+    except Exception as e:
+        print(f"Error fetching engram details from {engram_page_url}: {e}")
+        return "Unknown", "Unknown", "Unknown"

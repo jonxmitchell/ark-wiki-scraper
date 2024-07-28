@@ -25,10 +25,15 @@
 		"Rubble",
 		"Exo-Mek",
 		"Rockwell",
-		"Reaper Prince",
-		"Reaper Queen",
+		"Reaper_Prince",
+		"Reaper_Queen",
 		"Caverns"
 	],
-	"item_blacklist": [],
-	"engram_blacklist": []
+	"item_blacklist": [
+		"Tek_ATV",
+		"Beer_Jar_(alt)",
+		"Pistol_Hat_Skins",
+		"Deathworm_Horn_or_Woolly_Rhino_Horn"
+	],
+	"engram_blacklist": ["Platform_Cart"]
 }
