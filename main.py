@@ -1,32 +1,42 @@
 import json
 import asyncio
-from data_fetchers import get_creatures_list, get_items_list, get_engrams_list
-from config_loader import load_blacklist
+from data_fetchers import get_creatures_list, get_items_list, get_engrams_list, get_beacons_list
+from config import load_blacklist
+
+BASE_URL = 'https://ark.wiki.gg'
 
 def main():
-    creatures = get_creatures_list()
-    items = get_items_list()
-    engrams = asyncio.run(get_engrams_list())
+    creatures_url = BASE_URL + '/wiki/Creature_IDs'
+    items_url = BASE_URL + '/wiki/Item_IDs'
+    engrams_url = BASE_URL + '/wiki/Engrams'
+    beacons_url = BASE_URL + '/wiki/Beacon_IDs'
 
-    dino_blacklist, item_blacklist, engram_blacklist = load_blacklist()
+    dino_blacklist, item_blacklist, engram_blacklist, beacon_blacklist = load_blacklist()
 
-    filtered_creatures = {name: data for name, data in creatures.items() if not any(term in name for term in dino_blacklist)}
-    filtered_items = {name: data for name, data in items.items() if not any(term in name for term in item_blacklist)}
-    filtered_engrams = {name: data for name, data in engrams.items() if not any(term in name for term in engram_blacklist)}
+    creatures = get_creatures_list(creatures_url)
+    items = get_items_list(items_url)
+    engrams = asyncio.run(get_engrams_list(engrams_url))
+    beacons = get_beacons_list(beacons_url)
 
-    all_data = {
+    filtered_creatures = {k: v for k, v in creatures.items() if k not in dino_blacklist}
+    filtered_items = {k: v for k, v in items.items() if k not in item_blacklist}
+    filtered_engrams = {k: v for k, v in engrams.items() if k not in engram_blacklist}
+    filtered_beacons = {k: v for k, v in beacons.items() if k not in beacon_blacklist}
+
+    data = {
         "Creatures": filtered_creatures,
         "Items": filtered_items,
-        "Engrams": filtered_engrams
+        "Engrams": filtered_engrams,
+        "Beacons": filtered_beacons,
     }
 
     with open('ark_data.json', 'w') as f:
-        json.dump(all_data, f, indent=4)
+        json.dump(data, f, indent=4)
 
-    print(f"Filtered Creatures: {len(filtered_creatures)}")
-    print(f"Filtered Items: {len(filtered_items)}")
-    print(f"Filtered Engrams: {len(filtered_engrams)}")
-    print("Data collection complete. Check 'ark_data.json' for results.")
+    print(f"Total creatures: {len(filtered_creatures)}")
+    print(f"Total items: {len(filtered_items)}")
+    print(f"Total engrams: {len(filtered_engrams)}")
+    print(f"Total beacons: {len(filtered_beacons)}")
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     main()

@@ -31,12 +31,12 @@ def click_element(driver, element):
         print(f"Error clicking element: {e}")
 
 def format_title(title):
-    return title.replace(' ', '_')
+    return title.replace(' ', '_').replace('(', '').replace(')', '')
 
-def get_creatures_list():
+def get_creatures_list(creatures_url):
     print("Collecting creature data...")
     driver = init_webdriver(headless=True)
-    driver.get(BASE_URL + '/wiki/Creature_IDs')
+    driver.get(creatures_url)
     wait = WebDriverWait(driver, 10)
 
     show_buttons = driver.find_elements(By.CSS_SELECTOR, "span.jslink")
@@ -88,10 +88,10 @@ def get_creatures_list():
 
     return creatures
 
-def get_items_list():
+def get_items_list(items_url):
     print("Collecting item data...")
     driver = init_webdriver(headless=True)
-    driver.get(BASE_URL + '/wiki/Item_IDs')
+    driver.get(items_url)
     wait = WebDriverWait(driver, 10)
 
     show_buttons = driver.find_elements(By.CSS_SELECTOR, "span.jslink")
@@ -153,10 +153,10 @@ def get_items_list():
     print(f"Total items collected: {len(items)}")
     return items
 
-async def get_engrams_list():
+async def get_engrams_list(engrams_url):
     print("Collecting engram data...")
     driver = init_webdriver(headless=True)
-    driver.get(BASE_URL + '/wiki/Engrams')
+    driver.get(engrams_url)
     wait = WebDriverWait(driver, 10)
 
     soup = BeautifulSoup(driver.page_source, 'html.parser')
@@ -229,6 +229,54 @@ async def fetch_engram_details(session, engram_page_url):
 
             return key_name, name, blueprint
 
-    except Exception as e:
-        print(f"Error fetching engram details from {engram_page_url}: {e}")
+    except Exception:
+        print(f"Gathering data for engrams from {engram_page_url}")
         return "Unknown", "Unknown", "Unknown"
+
+def get_beacons_list(beacons_url):
+    print("Collecting beacon data...")
+    driver = init_webdriver(headless=True)
+    driver.get(beacons_url)
+    wait = WebDriverWait(driver, 10)
+
+    soup = BeautifulSoup(driver.page_source, 'html.parser')
+    driver.quit()
+
+    beacons = {}
+    tables = soup.find_all('table', class_='wikitable')
+
+    beacon_id = 1
+
+    for table in tables:
+        # Get the title of the section
+        section_title = table.find_previous('h3').get_text(strip=True)
+        section_title_key = format_title(section_title)
+
+        rows = table.find_all('tr')[1:]
+        for row in rows:
+            cols = row.find_all('td')
+            if len(cols) < 2:
+                continue
+
+            try:
+                name_cell = cols[0].get_text(strip=True)
+                class_name = cols[1].get_text(strip=True)
+
+                name = f"[{section_title}] {name_cell}"
+                key_name = f"{section_title_key}_{format_title(name_cell)}"
+
+                beacons[key_name] = {
+                    "ID": beacon_id,
+                    "Type": "beacon",
+                    "Name": name,
+                    "ClassName": class_name
+                }
+
+                print(f"Collected beacon: {name} (ID: {beacon_id})")
+                beacon_id += 1
+
+            except Exception as e:
+                print(f"Error processing row: {e}")
+
+    print(f"Total beacons collected: {len(beacons)}")
+    return beacons
